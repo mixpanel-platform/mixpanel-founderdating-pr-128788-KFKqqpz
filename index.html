@@ -183,7 +183,6 @@
         border-radius: 5px;
         border: 1px solid #bfcfda;
       }
-
       .node {
         cursor: pointer;
       }
@@ -210,7 +209,6 @@
       #funnel-query {
         margin: 20px 20px 20px 0;
       }
-
       .alert {
         display: none;
         position: fixed;
@@ -241,7 +239,6 @@
         bottom: 15px;
         right: 35px;
       }
-
     </style>
 
     <div class="mixpanel-platform-section">
@@ -295,18 +292,35 @@
       var $add = $('#events').find('#add');
       
       function addEvent(i) {
+        var eventSelect;
+        var options = {items: []};
+        
+        var paramsE = {
+            type: 'general', 
+            limit: 255          
+        };
+    MP.api.topEvents(paramsE).done(function(results) {
+      _.each(results.values(), function(v,k) {
+        options.items.push({label: v, value: v});
+      })
+      MP.api.query('/api/2.0/custom_events/').done(function(json) {
+        _.each(json.custom_events, function(v,k) {
+          options.items.push({label: "$custom_event:"+ v.name, value: "$custom_event:"+ v.id});
+        })
         if (i > 0) {
           $('<div class="right-arrow"></div>').insertBefore($add);
         }
-        var eventSelect = $('<div class="event_select inline block" id="' + i + '"></div>').insertBefore($add).MPEventSelect();
-      }
+        eventSelect = $('<div class="event_select inline block" id="' + i + '"></div>').insertBefore($add).MPSelect(options);
+      });
+    });
+    
+  }
       function resetEvents() {
         // clear event dropdowns
         $('.event_select').remove();
         $('.right-arrow').remove();
         addEvent(0);
       }
-
       $(document).ready(function() {
         addEvent(0);
       });
@@ -347,7 +361,6 @@
         root.each(function(d,i) {
           var index = d.name.indexOf(':');
           newEvents.push(d.name.substr(index+2));
-
           var result = getFlowSteps(d, newEvents);
           if (result != 'error' && result != undefined) {
             resetEvents();
@@ -356,17 +369,14 @@
           }
         });
       });
-
       function runQuery() {
         // clear previous query
         $('#funnel').html('');
         $('.flow').hide();
-
         if (event_list.length < 2) {
           error('Must have more than one event in a funnel. Ensure there are multiple events selected in your dropdowns. In a flow, events can be selected or deselected by clicking on the event name or applicable node.');
           return;
         }
-
         // set up parameters
         var dateVal = $('#dates').val();
         var queryParams = {
@@ -391,7 +401,6 @@
         });
         $('#report').show();
       }
-
       // create funnel
       $('#dates').MPDatepicker();
       var funnelGraph = $('#funnel');
@@ -420,12 +429,10 @@
         var total = $('#graph').height();
         return total/count;
       }
-
       function calculateFlowLine(count) {
         var count = count || 1;
         return 15/count;
       }
-
       function kFormatter(num) {
         return num > 999 ? (num/1000).toFixed(1) + 'K' : Math.floor(num);
       }
@@ -491,7 +498,6 @@
         treeRoot = flowObject;
         treeRoot.x0 = height / 2;
         treeRoot.y0 = 0;
-
         function collapse(d) {
           if (d.children) {
             d._children = d.children;
@@ -499,54 +505,41 @@
             d.children = null;
           }
         }
-
         treeRoot.children.forEach(collapse);
         update(treeRoot);      
       }
-
       // d3 tree flow
       var margin = {top: 20, right: 40, bottom: 20, left: 40},
           width = 960 - margin.right - margin.left,
           height = 920 - margin.top - margin.bottom;
-
       var i = 0,
           duration = 750,
           treeRoot;
-
       var tree = d3.layout.tree()
           .size([height, width]);
-
       var diagonal = d3.svg.diagonal()
           .projection(function(d) { return [d.y, d.x]; });
-
       var svg = d3.select("#flow").append("svg")
           .attr("width", width + margin.right + margin.left)
           .attr("height", height + margin.top + margin.bottom)
           .append("g")
           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
       d3.select(self.frameElement).style("height", "800px");
-
       function update(source) {
         var flow_length = path_length + 1;
-
         // Compute the new tree layout.
         var nodes = tree.nodes(treeRoot).reverse(),
             links = tree.links(nodes);
-
         // Normalize for fixed-depth.
         nodes.forEach(function(d) { d.y = 850 / flow_length * d.depth; });
         
         // Find max count
         var maxCount = 0;
         nodes.forEach(function(d) { if (d.depth > source.depth) maxCount = d.count > maxCount ? d.count : maxCount });
-
         var ratio = calculateFlowLine(maxCount);
-
         // Update the nodes…
         var node = svg.selectAll("g.node")
             .data(nodes, function(d) { return d.id || (d.id = ++i); });
-
         // Enter any new nodes at the parent's previous position.
         var nodeEnter = node.enter().append("g")
             .attr("class", function(d) {return d.parent ? "node" : "root node" })
@@ -554,11 +547,9 @@
             .style("-webkit-clip-path", "polygon(-3px 0, " + 750/flow_length + "px 0, " + 750/flow_length + "px 100%, -3px 100%")
             .style("clip-path", "polygon(-3px 0, " + 750/flow_length + "px 0, " + 750/flow_length + "px 100%, -3px 100%")
             .on("click", click);
-
         nodeEnter.append("circle")
             .attr("r", 1e-6)
             .style("fill", function(d) { return d.selected ? "#fff" : "lightsteelblue"; });
-
         nodeEnter.append("text")
             .attr("dx", 10)
             .attr("dy", 3)
@@ -568,36 +559,28 @@
             
         nodeEnter.append("title")
             .text(function(d) { return d.name; })
-
         // Transition nodes to their new position.
         var nodeUpdate = node.transition()
             .duration(duration)
             .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
-
         nodeUpdate.select("circle")
             .attr("r", 4.5)
             .style("fill", function(d) { return d.selected ? "#fff" : "lightsteelblue"; });
-
         nodeUpdate.select("text")
             .style("fill-opacity", 1)
             .style("font-weight", function(d) {return d.selected ? "bold" : "normal"; });
-
         // Transition exiting nodes to the parent's new position.
         var nodeExit = node.exit().transition()
             .duration(duration)
             .attr("transform", function(d) { return "translate(" + source.y + "," + source.x + ")"; })
             .remove();
-
         nodeExit.select("circle")
             .attr("r", 1e-6);
-
         nodeExit.select("text")
             .style("fill-opacity", 1e-6);
-
         // Update the links…
         var link = svg.selectAll("path.link")
             .data(links, function(d) { return d.target.id; });
-
         // Enter any new links at the parent's previous position.
         link.enter().insert("path", "g")
             .attr("class", "link")
@@ -609,12 +592,10 @@
               var o = {x: source.x0, y: source.y0};
               return diagonal({source: o, target: o});
             });
-
         // Transition links to their new position.
         link.transition()
             .duration(duration)
             .attr("d", diagonal);
-
         // Transition exiting nodes to the parent's new position.
         link.exit().transition()
             .duration(duration)
@@ -623,14 +604,12 @@
               return diagonal({source: o, target: o});
             })
             .remove();
-
         // Stash the old positions for transition.
         nodes.forEach(function(d) {
           d.x0 = d.x;
           d.y0 = d.y;
         });
       }
-
       // Toggle children on click.
       function click(d) {
         if (d.selected) {
@@ -646,13 +625,11 @@
         }
         update(d);
       }
-
       // Find selected nodes on funnel query click
       function getFlowSteps(parent, children) {
         var children = children || [];
         var nodeChildren = [];
         var depth = parent.depth;
-
         d3.selectAll(parent.children).forEach(function(e, j) {
           e.forEach(function(x, k) {
             if (x.selected) {
